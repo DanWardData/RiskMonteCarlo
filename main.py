@@ -1,4 +1,5 @@
 from random import randint as ri
+import multiprocessing
 
 
 def make_dice_rolls(dice_count):
@@ -14,7 +15,7 @@ def second_roll_value(roll_list):
         return roll_list[1]
 
 
-def simulation(num_atk_dice, num_def_dice):
+def simulation(num_atk_dice, num_def_dice, outcomes):
     # Randomise the rolls
     atk_rolls = make_dice_rolls(num_atk_dice)
     def_rolls = make_dice_rolls(num_def_dice)
@@ -32,19 +33,26 @@ def simulation(num_atk_dice, num_def_dice):
     outcome += 1 if other_atk_roll > other_def_roll else -1
     outcome = int(outcome / 2)
 
-    return outcome
+    outcomes.put(outcome)
 
 
 if __name__ == '__main__':
     num_atk_dice = 3
     num_def_dice = 2
-    num_runs = 5000000
+    num_runs = 5000
 
-    outcome_avg = 0
+    outcomes = multiprocessing.Queue()
 
-    for i in range(num_runs):
-        # For memory efficiency, we don't store each set of dice roll outcomes.
-        outcome_avg += simulation(num_atk_dice, num_def_dice) / num_runs
+    # Multi-process the simulations for speed
+    processes = [multiprocessing.Process(target=simulation, args=(num_atk_dice, num_def_dice, outcomes)) for i in range(num_runs)]
+
+    for process in processes:
+        process.start()
+
+    for process in processes:
+        process.join()
+
+    outcome_avg = sum(outcomes.get() for p in processes) / num_runs
 
     print(f'Avg outcome: {outcome_avg:6f}')
     print(f"""
